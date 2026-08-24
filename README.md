@@ -1,6 +1,6 @@
-# App Lab
+# Apps
 
-Personal sandbox for apps in progress -- kept separate from the shared
+Any apps I'm trying to practice building. Kept separate from the shared
 `deployment_tools` team repo so work-in-progress stays private. Each subfolder
 is its own standalone app/project.
 
