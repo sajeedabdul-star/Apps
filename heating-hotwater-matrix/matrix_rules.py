@@ -40,12 +40,10 @@ CATEGORIES: list[Category] = [
     Category("Heat Pump (LWP/SWP)", "hp", True, True, True,
               "Predium does NOT distinguish central vs. decentral heat pump installs -- one "
               "technology value covers both."),
-    Category("Direct Electric Heating", "de", False, True, True),
+    Category("Electric Decentral (heating)", "de", False, True, True),
     Category("Electric Storage Central", "es", False, True, False,
               "Heating-only in Predium -- no matching central hot-water storage technology exists."),
-    Category("Electric Decentral (hot water)", "ed", True, False, True,
-              "Hot-water-only in Predium (Durchlauferhitzer / Tauchsieder) -- no equivalent "
-              "decentral electric heating-only technology."),
+    Category("Electric Decentral (hot water)", "ed", True, False, True),
 ]
 
 CATEGORIES_BY_NAME = {c.name: c for c in CATEGORIES}
@@ -119,7 +117,7 @@ ENUM_TO_CATEGORY: dict[str, str] = {
     "DISTRICT_HEATING_WITHOUT_KWK": "District Heating",
     "ELECTRIC_HEAT_PUMP_AIR": "Heat Pump (LWP/SWP)",
     "ELECTRIC_HEAT_PUMP_GEO": "Heat Pump (LWP/SWP)",
-    "DIRECT_ELECTRICITY_HEATING": "Direct Electric Heating",
+    "DIRECT_ELECTRICITY_HEATING": "Electric Decentral (heating)",
     "CENTRAL_ELECTRIC_STORAGE": "Electric Storage Central",
     "ELECTRIC_IMMERSION_HEATER": "Electric Decentral (hot water)",
     "ELECTRIC_FLOW_HEATER": "Electric Decentral (hot water)",
