@@ -234,6 +234,8 @@ with tab_bulk:
                             "Building ID": building_id, "Address": address, "System": system_label,
                             "Source": get(row, col_source), "Technology": get(row, col_tech),
                             "Severity": "N/A", "Assumed System Year": None,
+                            "Headline": "Out of scope -- the sanity check only covers Heating and Hot Water.",
+                            "Rule Source": "", "GModG-affected": False,
                             "Reasons": "Out of scope -- the sanity check only covers Heating and Hot Water.",
                             "Predium Link": predium_link,
                         })
@@ -267,6 +269,9 @@ with tab_bulk:
                         "Technology": get(row, col_tech),
                         "Severity": verdict.severity,
                         "Assumed System Year": verdict.assumed_system_year,
+                        "Headline": verdict.headline,
+                        "Rule Source": verdict.source,
+                        "GModG-affected": verdict.gmodg_note,
                         "Reasons": " | ".join(verdict.reasons),
                         "Predium Link": predium_link,
                     })
@@ -291,12 +296,23 @@ with tab_bulk:
         severity_filter = st.multiselect("Filter by severity", SEVERITY_ORDER, default=["High", "Medium"])
         filtered = results_df[results_df["Severity"].isin(severity_filter)] if severity_filter else results_df
 
+        show_full = st.checkbox(
+            "Show full reasoning text (long)", value=False,
+            help="Off by default: shows a one-line Headline + where the rule's era/impossibility claim comes "
+                 "from (Rule Source). Turn on for the complete step-by-step reasoning the engine walked "
+                 "through -- also always included in the downloaded Excel regardless of this toggle.",
+        )
+        compact_cols = ["Building ID", "Address", "System", "Source", "Technology", "Severity",
+                        "Assumed System Year", "Headline", "Rule Source", "GModG-affected", "Predium Link"]
+        full_cols = compact_cols + ["Reasons"]
+        display_cols = full_cols if show_full else compact_cols
+
         def highlight_severity(row):
             color = SEVERITY_COLOR.get(row["Severity"], "#FFFFFF")
             return [f"background-color: {color}" if col == "Severity" else "" for col in row.index]
 
         st.dataframe(
-            filtered.style.apply(highlight_severity, axis=1),
+            filtered[display_cols].style.apply(highlight_severity, axis=1),
             width='stretch', height=500,
             column_config={"Predium Link": st.column_config.LinkColumn("Predium Link")},
         )
@@ -355,13 +371,16 @@ with tab_single:
         )
 
         color = SEVERITY_COLOR.get(verdict.severity, "#FFFFFF")
+        gmodg_badge = " &nbsp; ⚖️ <span style='font-size:13px; font-weight:normal;'>GModG-affected rule</span>" if verdict.gmodg_note else ""
         st.markdown(
             f"<div style='background-color:{color}; padding:16px; border-radius:8px;'>"
-            f"<h3 style='margin:0'>Verdict: {verdict.severity}</h3></div>",
+            f"<h3 style='margin:0'>Verdict: {verdict.severity}{gmodg_badge}</h3>"
+            f"<p style='margin:8px 0 0; font-size:15px;'>{verdict.headline}</p></div>",
             unsafe_allow_html=True,
         )
-        st.markdown("**Reasons:**")
-        for reason in verdict.reasons:
-            st.write(f"- {reason}")
-        if verdict.assumed_system_year:
-            st.caption(f"Assumed system year used for the era check: {verdict.assumed_system_year}")
+        st.caption(f"Rule source: {verdict.source}" + (
+            f" · Assumed system year used: {verdict.assumed_system_year}" if verdict.assumed_system_year else ""
+        ))
+        with st.expander("Show full step-by-step reasoning"):
+            for reason in verdict.reasons:
+                st.write(f"- {reason}")

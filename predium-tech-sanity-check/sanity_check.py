@@ -7,7 +7,7 @@ or thousands of times over an uploaded export.
 
 from dataclasses import dataclass, field
 
-from rules import RULES_BY_TECH
+from rules import RULES_BY_TECH, SOURCE_TIER_LABEL
 
 
 @dataclass
@@ -16,6 +16,9 @@ class Verdict:
     reasons: list[str] = field(default_factory=list)
     assumed_system_year: int | None = None
     matched_rule: str | None = None
+    headline: str = ""  # one-line summary of WHY, for compact display
+    source: str = ""  # short provenance tag, e.g. "Predium reference DB (exact)"
+    gmodg_note: bool = False  # True if this rule's real-world status was corrected by GModG research
 
 
 SEVERITY_ORDER = {"None": 0, "Low": 1, "Medium": 2, "High": 3}
@@ -47,38 +50,32 @@ def check_combination(
 
     # ---- Unknown technology entirely
     if rule is None:
-        return Verdict(
-            severity="High",
-            reasons=[f"'{technology}' is not a technology Predium's rules recognize at all -- check for a typo "
-                     f"or an unmapped enum value."],
-        )
+        msg = f"'{technology}' is not a technology Predium's rules recognize at all -- check for a typo or an unmapped enum value."
+        return Verdict(severity="High", reasons=[msg], headline=msg, source="(no rule matched)")
+
+    # ---- Invalid pairing: system not valid for this technology
+    if rule.systems and system not in rule.systems:
+        msg = (f"'{technology}' is not a valid technology for system '{system}' per Predium's own "
+               f"compatibility rules (valid systems: {', '.join(rule.systems) or 'none'}).")
+        return Verdict(severity="High", reasons=[msg], matched_rule=rule.tech, headline=msg,
+                        source=SOURCE_TIER_LABEL[rule.source_tier], gmodg_note=rule.gmodg_note)
+
+    # ---- Invalid pairing: source not valid for this technology
+    if source and source not in rule.sources:
+        msg = (f"'{source}' is not a valid energy source for '{technology}' per Predium's own "
+               f"compatibility rules (valid sources: {', '.join(rule.sources)}).")
+        return Verdict(severity="High", reasons=[msg], matched_rule=rule.tech, headline=msg,
+                        source=SOURCE_TIER_LABEL[rule.source_tier], gmodg_note=rule.gmodg_note)
 
     reasons: list[str] = []
     severity = "None"
 
-    # ---- Invalid pairing: system not valid for this technology
-    if rule.systems and system not in rule.systems:
-        return Verdict(
-            severity="High",
-            reasons=[f"'{technology}' is not a valid technology for system '{system}' per Predium's own "
-                     f"compatibility rules (valid systems: {', '.join(rule.systems) or 'none'})."],
-            matched_rule=rule.tech,
-        )
     if not rule.systems:
         reasons.append(
             "This technology is not tied to Heating or Hot Water in Predium's current UI at all -- its mere "
             "presence under any system type is anomalous."
         )
         severity = _bump(severity, "High")
-
-    # ---- Invalid pairing: source not valid for this technology
-    if source and source not in rule.sources:
-        return Verdict(
-            severity="High",
-            reasons=[f"'{source}' is not a valid energy source for '{technology}' per Predium's own "
-                     f"compatibility rules (valid sources: {', '.join(rule.sources)})."],
-            matched_rule=rule.tech,
-        )
 
     reasons.append(f"Realistic in practice: {rule.realistic_label}.")
     reasons.append(f"Predium approximation behavior: {rule.approx_label}.")
@@ -173,4 +170,17 @@ def check_combination(
                 )
                 severity = _bump(severity, "Medium" if severity != "High" else "High")
 
-    return Verdict(severity=severity, reasons=reasons, assumed_system_year=assumed_year, matched_rule=rule.tech)
+    # ---- Headline: the single most decisive reason, for a short/compact view
+    context_reasons = [r for r in reasons if r.startswith("Realistic in practice:") or r.startswith("Predium approximation behavior:")]
+    decisive = [r for r in reasons if r not in context_reasons and not r.startswith("Note:")]
+    if decisive:
+        headline = decisive[-1]
+    elif severity == "Low":
+        headline = "Standard, low-risk combination -- no flags triggered."
+    else:
+        headline = f"No specific trigger fired; base severity reflects that this is {rule.realistic_label.lower()}."
+
+    return Verdict(
+        severity=severity, reasons=reasons, assumed_system_year=assumed_year, matched_rule=rule.tech,
+        headline=headline, source=SOURCE_TIER_LABEL[rule.source_tier], gmodg_note=rule.gmodg_note,
+    )
