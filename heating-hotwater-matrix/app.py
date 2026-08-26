@@ -155,8 +155,8 @@ with tab_export:
                     hotwater_only += hotwater is not None
                     continue  # need both to judge a pairing
 
-                heating_cat = enum_to_category(heating["tech_enum"], heating["source_enum"])
-                hotwater_cat = enum_to_category(hotwater["tech_enum"], hotwater["source_enum"])
+                heating_cat = enum_to_category(heating["tech_enum"], heating["source_enum"], "HEATING")
+                hotwater_cat = enum_to_category(hotwater["tech_enum"], hotwater["source_enum"], "HOT_WATER")
 
                 if heating["tech_enum"] in NO_CATEGORY_TECHS or hotwater["tech_enum"] in NO_CATEGORY_TECHS:
                     status = "N/A (solar-only route)"

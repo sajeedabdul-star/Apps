@@ -93,6 +93,12 @@ def full_matrix() -> dict[str, dict[str, str]]:
 # enum values don't map cleanly:
 #   - LOW_TEMPERATURE_BOILER is gas OR oil depending on its energy source -- pass
 #     source_enum to enum_to_category() to disambiguate.
+#   - ELECTRIC_IMMERSION_HEATER (Tauchsieder) is NOT in Predium's manual technology
+#     picker for either system (TechnologyTypesForSystemType.ts has no entry for it
+#     at all -- it's TABULA-approximation-derived), yet real reference-building data
+#     shows it genuinely used under BOTH systems: 65 Hot Water rows, 31 Heating rows
+#     (reference_buildings.db). Defaulting it to "hot water only" silently mislabels
+#     roughly a third of its real occurrences -- pass system_enum to disambiguate.
 #   - SOLAR_PLANT is treated as a supplement, not a standalone category (see the
 #     Excel workbook's methodology notes) -- excluded here; a building's "real"
 #     hot-water technology should be picked as whichever non-solar route has the
@@ -119,15 +125,17 @@ ENUM_TO_CATEGORY: dict[str, str] = {
     "ELECTRIC_HEAT_PUMP_GEO": "Heat Pump (LWP/SWP)",
     "DIRECT_ELECTRICITY_HEATING": "Electric Decentral (heating)",
     "CENTRAL_ELECTRIC_STORAGE": "Electric Storage Central",
-    "ELECTRIC_IMMERSION_HEATER": "Electric Decentral (hot water)",
+    "ELECTRIC_IMMERSION_HEATER": "Electric Decentral (hot water)",  # default: HOT_WATER row -- see system_enum override below
     "ELECTRIC_FLOW_HEATER": "Electric Decentral (hot water)",
 }
 
 NO_CATEGORY_TECHS = {"SOLAR_PLANT", "SMALL_ELECTRIC_STORAGE"}  # handled specially, see note above
 
 
-def enum_to_category(tech_enum: str, source_enum: str | None = None) -> str | None:
+def enum_to_category(tech_enum: str, source_enum: str | None = None, system_enum: str | None = None) -> str | None:
     tech_enum = (tech_enum or "").strip().upper()
     if tech_enum == "LOW_TEMPERATURE_BOILER":
         return "Oil Central" if (source_enum or "").strip().upper() == "FUEL_OIL" else "Gas Central"
+    if tech_enum == "ELECTRIC_IMMERSION_HEATER" and (system_enum or "").strip().upper() == "HEATING":
+        return "Electric Decentral (heating)"
     return ENUM_TO_CATEGORY.get(tech_enum)
