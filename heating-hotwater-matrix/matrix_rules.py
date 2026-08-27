@@ -4,10 +4,24 @@ Single source of truth for the Heating x Hot Water plausibility matrix.
 Categories come from Predium's own technology catalog (enum + German i18n labels --
 "Kessel" = boiler = central, "Ofen" = stove = decentral, "Zentral-"/"Klein-" = explicit).
 The Standard/Could be/Rare/Practically Impossible judgment is engineering reasoning about
-shared vs. duplicate infrastructure, with two specific overrides confirmed against real
-co-occurrence counts queried from Predium's own reference-building database
+shared vs. duplicate infrastructure, with a couple of specific overrides checked against
+real co-occurrence counts from Predium's own reference-building database
 (reference_buildings.db, TABULA/IWU-sourced) -- see OVERRIDES below and the Excel
 workbook's "Source & Methodology" tab for the full writeup.
+
+IMPORTANT, corrected 2026-08-27: each archetype "building" in reference_buildings.db has
+many `system_variants` (5-40), but only variant_index=0 is the real as-found baseline --
+Predium's own approximation code (reference-buildings.service.ts) only ever reads
+system_variants[0] when matching a real building. Every other variant is a synthetic
+"what if this were renovated to X" retrofit-scenario sweep (building IDs are literally
+suffixed ".ReEx." -- Renovation Exploration), generated combinatorially across heating x
+hot-water technology options for scenario/cost modeling elsewhere in the product. Counting
+across ALL variants (as an earlier pass of this file did) massively overstates real-world
+co-occurrence -- e.g. it produced "38" for the Electric Storage Central override below,
+when the real as-found count is 0 (this archetype set has no as-found Electric Storage
+Central buildings at all, so that override rests on catalog/engineering reasoning alone,
+not confirmed co-occurrence). Any future real-data check against this DB MUST filter to
+variant_index = 0.
 
 If a category or judgment needs to change, change it here -- the app renders whatever
 this file says.
@@ -61,12 +75,20 @@ STATUS_EXPLANATION = {
                                "fuel-storage systems, for no benefit.",
 }
 
-# Overrides confirmed against real co-occurrence counts in Predium's reference-building database.
+# Overrides to the default flexible-hotwater-only logic below.
 # Format: (hotwater_category, heating_category) -> status
 OVERRIDES: dict[tuple[str, str], str] = {
-    ("Electric Decentral (hot water)", "Electric Storage Central"): "Standard",  # real DB: 38 co-occurrences
-    ("Gas Central", "District Heating"): "Rare",       # real DB: 2 co-occurrences
-    ("District Heating", "Gas Central"): "Rare",        # real DB: 2 co-occurrences
+    # Not confirmable by real co-occurrence: this archetype set has zero as-found
+    # (variant_index=0) Electric Storage Central buildings at all, so there's no real
+    # signal either way. Rests entirely on catalog/engineering reasoning: Predium has no
+    # central electric hot-water technology, so this decentral pairing is the only real
+    # option for an actual Nachtspeicher building, not an exception to the norm.
+    ("Electric Decentral (hot water)", "Electric Storage Central"): "Standard",
+    # Confirmed real, but only in this direction -- 2 as-found (variant_index=0) buildings
+    # have District Heating hot water on a Gas Central heating system. The reverse (Gas
+    # Central hot water on a District Heating heating system) has zero as-found instances,
+    # so it's intentionally NOT overridden here and falls through to the default below.
+    ("District Heating", "Gas Central"): "Rare",
 }
 
 
