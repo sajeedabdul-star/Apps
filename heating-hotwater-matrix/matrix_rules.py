@@ -117,10 +117,14 @@ def full_matrix() -> dict[str, dict[str, str]]:
 #     source_enum to enum_to_category() to disambiguate.
 #   - ELECTRIC_IMMERSION_HEATER (Tauchsieder) is NOT in Predium's manual technology
 #     picker for either system (TechnologyTypesForSystemType.ts has no entry for it
-#     at all -- it's TABULA-approximation-derived), yet real reference-building data
-#     shows it genuinely used under BOTH systems: 65 Hot Water rows, 31 Heating rows
-#     (reference_buildings.db). Defaulting it to "hot water only" silently mislabels
-#     roughly a third of its real occurrences -- pass system_enum to disambiguate.
+#     at all). Correction, 2026-08-27: the as-found (variant_index=0) slice of
+#     reference_buildings.db shows it ONLY under Hot Water (16 rows, never Heating) --
+#     an earlier check that counted across all synthetic ".ReEx." scenario variants
+#     (65 Hot Water / 31 Heating) overstated this. So there's no confirmed real-data
+#     case of it appearing under Heating. The system_enum disambiguation is kept anyway
+#     as defensive handling for real (possibly messy/imported) customer exports, which
+#     aren't bound by this reference set -- but it's a safety net, not a confirmed-common
+#     mislabeling like the original commit message claimed.
 #   - SOLAR_PLANT is treated as a supplement, not a standalone category (see the
 #     Excel workbook's methodology notes) -- excluded here; a building's "real"
 #     hot-water technology should be picked as whichever non-solar route has the
